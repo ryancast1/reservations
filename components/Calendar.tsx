@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { getReservationsForMonth } from "@/lib/reservations";
-import { Reservation, ROOMS, ROOM_HEX, BLOCKED_HEX, BookableRoom } from "@/lib/types";
+import { Reservation, ROOMS, ROOM_HEX, ROOM_COLORS, BLOCKED_HEX, BookableRoom } from "@/lib/types";
 import RoomLegend from "./RoomLegend";
 
 const DAYS_OF_WEEK = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
@@ -93,6 +93,28 @@ function getBlockedCellStyle(
   }
 }
 
+function getReservationsForDate(
+  dateStr: string,
+  reservations: Reservation[]
+): { reservation: Reservation; status: string }[] {
+  const results: { reservation: Reservation; status: string }[] = [];
+  for (const r of reservations) {
+    if (dateStr === r.check_in) {
+      results.push({ reservation: r, status: "Arriving" });
+    } else if (dateStr === r.check_out) {
+      results.push({ reservation: r, status: "Departing" });
+    } else if (dateStr > r.check_in && dateStr < r.check_out) {
+      results.push({ reservation: r, status: "Staying" });
+    }
+  }
+  return results;
+}
+
+function formatDisplayDate(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-");
+  return `${parseInt(m)}/${parseInt(d)}/${y}`;
+}
+
 function getMonthName(month: number): string {
   return new Date(2000, month).toLocaleString("default", { month: "long" });
 }
@@ -104,6 +126,7 @@ export default function Calendar() {
   });
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -208,14 +231,20 @@ export default function Calendar() {
           const blockedStatus = getBlockedStatus(cell.dateStr, reservations);
           const isBlocked = blockedStatus !== "none";
 
+          const isSelected = cell.dateStr === selectedDate;
+
           return (
             <div
               key={i}
-              className={`day-cell rounded flex flex-col p-0.5 overflow-hidden bg-white ${
-                isToday ? "ring-2 ring-blue-400 ring-inset" : ""
+              onClick={() => setSelectedDate(isSelected ? null : cell.dateStr)}
+              className={`day-cell rounded flex flex-col p-0.5 overflow-hidden bg-white cursor-pointer ${
+                isSelected
+                  ? "ring-2 ring-gray-900 ring-inset"
+                  : isToday
+                    ? "ring-2 ring-blue-400 ring-inset"
+                    : ""
               }`}
               style={isBlocked ? getBlockedCellStyle(blockedStatus) : undefined}
-              title={isBlocked ? "Blocked" : getTooltip(cell.dateStr)}
             >
               <span
                 className={`text-[10px] leading-none ${
@@ -256,6 +285,58 @@ export default function Calendar() {
 
       {/* Legend */}
       <RoomLegend />
+
+      {/* Selected day detail */}
+      {selectedDate && (() => {
+        const dayBookings = getReservationsForDate(selectedDate, reservations);
+        const dateLabel = new Date(selectedDate + "T12:00:00").toLocaleDateString("en-US", {
+          weekday: "long",
+          month: "long",
+          day: "numeric",
+        });
+
+        return (
+          <div className="mt-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold">{dateLabel}</h3>
+              <button
+                onClick={() => setSelectedDate(null)}
+                className="text-xs text-gray-400"
+              >
+                Close
+              </button>
+            </div>
+            {dayBookings.length === 0 ? (
+              <p className="text-sm text-gray-400">No bookings on this day.</p>
+            ) : (
+              <div className="space-y-2">
+                {dayBookings.map(({ reservation: r, status }) => (
+                  <div
+                    key={r.id}
+                    className="bg-white rounded-lg border border-gray-200 p-3"
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium text-sm">
+                        {r.room === "ALL" ? "Blocked" : r.guest_name}
+                      </span>
+                      <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                        r.room === "ALL"
+                          ? "bg-gray-200 text-gray-700"
+                          : `${ROOM_COLORS[r.room as BookableRoom].bg} text-white`
+                      }`}>
+                        {r.room === "ALL" ? "Blocked" : ROOM_COLORS[r.room as BookableRoom].label}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {status} &middot; {formatDisplayDate(r.check_in)} &mdash; {formatDisplayDate(r.check_out)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Loading overlay */}
       {loading && (
