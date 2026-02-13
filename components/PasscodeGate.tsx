@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 const PASSCODE = "7412";
 const STORAGE_KEY = "admin_unlocked";
@@ -10,6 +11,7 @@ export default function PasscodeGate({
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
   const [unlocked, setUnlocked] = useState(false);
   const [input, setInput] = useState("");
   const [error, setError] = useState(false);
@@ -63,6 +65,13 @@ export default function PasscodeGate({
           className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium active:bg-blue-700"
         >
           Unlock
+        </button>
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="w-full text-gray-500 text-sm py-2"
+        >
+          &larr; Go Back
         </button>
       </form>
     </div>
