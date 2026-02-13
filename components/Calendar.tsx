@@ -152,20 +152,18 @@ export default function Calendar() {
       <div className="flex items-center justify-between mb-3">
         <button
           onClick={prevMonth}
-          className="p-2 text-gray-500 hover:text-gray-900 text-lg"
-          aria-label="Previous month"
+          className="px-3 py-2 text-sm font-medium text-gray-600 bg-gray-200 rounded-lg active:bg-gray-300"
         >
-          ‹
+          &larr; Prev
         </button>
         <h2 className="text-base font-semibold">
           {getMonthName(month)} {year}
         </h2>
         <button
           onClick={nextMonth}
-          className="p-2 text-gray-500 hover:text-gray-900 text-lg"
-          aria-label="Next month"
+          className="px-3 py-2 text-sm font-medium text-gray-600 bg-gray-200 rounded-lg active:bg-gray-300"
         >
-          ›
+          Next &rarr;
         </button>
       </div>
 
