@@ -14,18 +14,30 @@ function formatDateStr(year: number, month: number, day: number): string {
 function getRoomStatus(
   dateStr: string,
   room: BookableRoom,
-  reservations: Reservation[]
-): { status: "none" | "check-in" | "check-out" | "booked"; guestName?: string } {
+  reservations: Reservation[],
+  monthFirstDay: string
+): {
+  status: "none" | "check-in" | "check-out" | "booked";
+  guestName?: string;
+  showLabel: boolean;
+} {
   for (const r of reservations) {
     if (r.room !== room) continue;
     if (dateStr === r.check_in)
-      return { status: "check-in", guestName: r.guest_name };
+      return { status: "check-in", guestName: r.guest_name, showLabel: true };
     if (dateStr === r.check_out)
-      return { status: "check-out", guestName: r.guest_name };
-    if (dateStr > r.check_in && dateStr < r.check_out)
-      return { status: "booked", guestName: r.guest_name };
+      return { status: "check-out", guestName: r.guest_name, showLabel: false };
+    if (dateStr > r.check_in && dateStr < r.check_out) {
+      // Show label on first visible day: either check_in or first of month
+      const firstVisible = r.check_in >= monthFirstDay ? r.check_in : monthFirstDay;
+      return {
+        status: "booked",
+        guestName: r.guest_name,
+        showLabel: dateStr === firstVisible,
+      };
+    }
   }
-  return { status: "none" };
+  return { status: "none", showLabel: false };
 }
 
 function getRoomBarStyle(
@@ -114,6 +126,7 @@ export default function Calendar() {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const totalCells = Math.ceil((firstDayOfMonth + daysInMonth) / 7) * 7;
 
+  const monthFirstDay = formatDateStr(year, month, 1);
   const cells: { day: number; inMonth: boolean; dateStr: string }[] = [];
   for (let i = 0; i < totalCells; i++) {
     const dayNum = i - firstDayOfMonth + 1;
@@ -132,7 +145,7 @@ export default function Calendar() {
   function getTooltip(dateStr: string): string {
     const parts: string[] = [];
     for (const room of ROOMS) {
-      const { status, guestName } = getRoomStatus(dateStr, room, reservations);
+      const { status, guestName } = getRoomStatus(dateStr, room, reservations, monthFirstDay);
       if (status !== "none" && guestName) {
         const action =
           status === "check-in"
@@ -198,8 +211,8 @@ export default function Calendar() {
           return (
             <div
               key={i}
-              className={`day-cell rounded flex flex-col p-0.5 overflow-hidden ${
-                isToday ? "ring-1 ring-blue-400" : "bg-white"
+              className={`day-cell rounded flex flex-col p-0.5 overflow-hidden bg-white ${
+                isToday ? "ring-2 ring-blue-400 ring-inset" : ""
               }`}
               style={isBlocked ? getBlockedCellStyle(blockedStatus) : undefined}
               title={isBlocked ? "Blocked" : getTooltip(cell.dateStr)}
@@ -214,17 +227,24 @@ export default function Calendar() {
               {!isBlocked && (
                 <div className="flex-1 flex flex-col justify-end gap-0.5 pb-0.5">
                   {ROOMS.map((room) => {
-                    const { status } = getRoomStatus(
+                    const { status, guestName, showLabel } = getRoomStatus(
                       cell.dateStr,
                       room,
-                      reservations
+                      reservations,
+                      monthFirstDay
                     );
                     return (
                       <div
                         key={room}
-                        className="room-bar"
+                        className="room-bar relative overflow-hidden"
                         style={getRoomBarStyle(status, room)}
-                      />
+                      >
+                        {showLabel && guestName && status !== "check-in" && (
+                          <span className="absolute inset-0 flex items-center px-0.5 text-[7px] leading-none text-white font-medium truncate pointer-events-none">
+                            {guestName}
+                          </span>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
