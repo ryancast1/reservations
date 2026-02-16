@@ -38,6 +38,19 @@ export default function BookPage() {
         return;
       }
       await createReservation(guestName.trim(), room, checkIn, checkOut);
+
+      // Fire-and-forget email notification — don't block navigation
+      fetch("/api/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          guestName: guestName.trim(),
+          room,
+          checkIn,
+          checkOut,
+        }),
+      }).catch(() => {});
+
       router.push("/");
     } catch {
       setError("Something went wrong. Please try again.");
